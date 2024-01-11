@@ -1,13 +1,17 @@
 import { useState, useEffect } from 'react';
+import CallForm from '../components/CallForm';
+import ActionButton from '../components/ActionButton';
+import CallTable from '../components/CallTable';
+import ErrorMessage from '../components/ErrorMessage';
 
 export default function Home() {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [task, setTask] = useState('');
+  const [firstSentence, setFirstSentence] = useState(''); // New state for first sentence
   const [call_id, setCallId] = useState(null);
   const [calls, setCalls] = useState([]);
   const [callFailed, setCallFailed] = useState(false);
   const [callErrorMessage, setCallErrorMessage] = useState('');
-
 
   useEffect(() => {
     fetchCalls();
@@ -27,28 +31,11 @@ export default function Home() {
       console.error('Error fetching calls:', error);
     }
   };
-  
-  function formatCallLength(decimalTime) {
-    const minutes = Math.floor(decimalTime);
-    const seconds = Math.round((decimalTime - minutes) * 60);
-    return `${minutes}m ${seconds.toString().padStart(2, '0')}s`;
-  }
 
-  function formatCreatedAt(isoString) {
-    const date = new Date(isoString);
-    // Options for date and time formatting
-    const dateOptions = { year: 'numeric', month: 'long', day: 'numeric' };
-    const timeOptions = { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true };
-    // Locale 'en-US' is used as an example, you can change this to suit your locale preferences
-    const formattedDate = date.toLocaleDateString('en-US', dateOptions);
-    const formattedTime = date.toLocaleTimeString('en-US', timeOptions);
-    return `${formattedDate} at ${formattedTime}`;
-  }
-
-  const handleStartCall = async (e) => {
-    e.preventDefault();
+ const handleStartCall = async (phoneNumber, task, firstSentence) => {
+    // Updated to include firstSentence
     setCallFailed(false);
-    setCallErrorMessage(''); // Reset the error message
+    setCallErrorMessage('');
 
     try {
       const response = await fetch('/api/start-call', {
@@ -59,7 +46,7 @@ export default function Home() {
         body: JSON.stringify({
           phoneNumber, 
           task,
-          // Include additional fields here as required by your updated API
+          firstSentence, // Include first sentence in the request
         }),
       });
 
@@ -83,10 +70,7 @@ export default function Home() {
       setCallFailed(true);
       setCallErrorMessage(error.message);
     }
-};
-
-  
-  
+  };
 
   const handleEndCall = async () => {
     try {
@@ -105,100 +89,25 @@ export default function Home() {
     }
   };
 
- 
-  
   return (
     <div className="flex flex-col items-center justify-center h-screen bg-gray-100 p-4 space-y-6">
-    {/* Show call failed notification if callFailed is true */}
-    {callFailed && (
-      <div className="text-red-500 mb-4">
-        Call failed. Please try again later.
-      </div>
-    )}
-      {/* Form */}
-      <div className="bg-white p-8 rounded-xl shadow-lg w-full max-w-lg">
-        <form onSubmit={handleStartCall} className="space-y-4">
-          <div className="flex flex-col">
-            <input
-              type="text"
-              value={phoneNumber}
-              onChange={(e) => setPhoneNumber(e.target.value)}
-              placeholder="Phone Number"
-              className="w-full p-4 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:outline-none"
-            />
-          </div>
-          <div className="flex flex-col">
-            <input
-              type="text"
-              value={task}
-              onChange={(e) => setTask(e.target.value)}
-              placeholder="Task"
-              className="w-full p-4 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:outline-none"
-            />
-          </div>
-          <button
-            type="submit"
-            className="w-full bg-blue-600 text-white p-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
-          >
-            Start Call
-          </button>
-        </form>
-      </div>
-  
-      {/* Action Buttons */}
+      {callFailed && <ErrorMessage message="Call failed. Please try again later." />}
+      <CallForm 
+        onCallStart={handleStartCall} 
+        phoneNumber={phoneNumber} 
+        setPhoneNumber={setPhoneNumber} 
+        task={task} 
+        setTask={setTask}
+        firstSentence={firstSentence} // Pass first sentence to CallForm
+        setFirstSentence={setFirstSentence} // Pass setter function to CallForm
+      />
       {call_id && (
         <div className="flex space-x-4 w-full max-w-lg">
-          <button
-            onClick={handleEndCall}
-            className="flex-1 bg-red-600 text-white p-4 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-50"
-          >
-            End Call
-          </button>
-          {callFailed && (
-      <div className="text-red-500 mb-4">
-        Call failed: {callErrorMessage}
-      </div>
-    )}
-           {/* Error Message */}
-      {callFailed && (
-        <div className="text-center text-red-500">
-          Call failed. Unable to connect to the API.
+          <ActionButton text="End Call" onClick={handleEndCall} color="red" />
+          {callFailed && <ErrorMessage message={`Call failed: ${callErrorMessage}`} />}
         </div>
       )}
-        </div>
-      )}
-  
-      {/* Table to display calls */}
-      <div className="w-full max-w-4xl overflow-x-auto rounded-xl bg-white shadow-lg">
-        <table className="min-w-full table-auto">
-          <thead className="bg-blue-100">
-            <tr className="text-left text-gray-700 uppercase text-sm leading-normal">
-            <th className="py-3 px-6 text-center">To</th>
-              <th className="py-3 px-6 text-center">From</th>
-              <th className="py-3 px-6 text-center">Call Length</th>
-              <th className="py-3 px-6">Created At</th>
-              <th className="py-3 px-6">Call ID</th>
-      
-          
-       
-            </tr>
-          </thead>
-          <tbody className="text-gray-600 text-sm font-light">
-          {calls.map((call, index) => (
-            <tr key={index} className="border-b border-gray-200 hover:bg-gray-50">
-                    <td className="py-3 px-6 text-center">{call.to}</td>
-              <td className="py-3 px-6 text-center">{call.from}</td>
-              <td className="py-3 px-6 text-center">{formatCallLength(call.call_length)}</td>
-              <td className="py-3 px-6">{formatCreatedAt(call.created_at)}</td>
-              <td className="py-3 px-6">{call.c_id}</td>
-
-            </tr>
-          ))}
-        </tbody>
-        </table>
-      </div>
+      <CallTable calls={calls} />
     </div>
   );
-  
-  
 }

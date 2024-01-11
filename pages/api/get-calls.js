@@ -1,6 +1,6 @@
 export default async function handler(req, res) {
     if (req.method === 'GET') {
-      const url = 'https://api.bland.ai/v1/calls';
+      const url = 'https://api.callbland.com/v1/calls';
       const options = {
         method: 'GET',
         headers: {
